@@ -1,4 +1,4 @@
-const BASE_URL = 'http://localhost:8080';
+const BASE_URL = 'https://care-link-backend.onrender.com';
 
 // Token Management
 function saveAuth(token, email, role) {
