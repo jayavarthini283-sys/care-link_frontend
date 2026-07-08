@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CareLink - Schedule Management</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <div class="wrapper">
+        <!-- Sidebar container -->
+        <div id="sidebar-container"></div>
+
+        <!-- Content Area -->
+        <div id="content">
+            <!-- Navbar container -->
+            <div id="navbar-container"></div>
+
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="fw-bold text-dark mb-1">Doctor Schedule</h2>
+                    <p class="text-muted mb-0">Set up new availability slots and manage your existing consultation times.</p>
+                </div>
+            </div>
+
+            <div id="alert-container"></div>
+
+            <div class="row">
+                <!-- Add New Slot Form -->
+                <div class="col-lg-4 mb-4">
+                    <div class="card card-custom p-4 shadow-sm h-100">
+                        <h5 class="fw-bold mb-3 text-dark"><i class="bi bi-calendar-plus text-primary me-2"></i>Create Slot</h5>
+                        <hr class="mt-0">
+                        
+                        <form id="createSlotForm" novalidate>
+                            <div class="mb-3">
+                                <label for="startTime" class="form-label font-semibold text-dark">Start Date & Time</label>
+                                <input type="datetime-local" class="form-control py-2" id="startTime" required>
+                                <div class="invalid-feedback">Please select a start date and time.</div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label for="endTime" class="form-label font-semibold text-dark">End Date & Time</label>
+                                <input type="datetime-local" class="form-control py-2" id="endTime" required>
+                                <div class="invalid-feedback">Please select an end date and time.</div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary btn-primary-custom w-100 py-2.5 font-semibold" id="createBtn">
+                                <span class="spinner-border spinner-border-sm d-none me-2" role="status" aria-hidden="true" id="createSpinner"></span>
+                                <i class="bi bi-calendar-check me-1" id="createIcon"></i>Add Availability Slot
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- View Existing Slots Table -->
+                <div class="col-lg-8 mb-4">
+                    <div class="card card-custom table-card shadow-sm h-100" id="slots-card">
+                        <div class="card-header bg-white py-3">
+                            <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-calendar3-range me-2 text-primary"></i>My Availability Calendar</h5>
+                        </div>
+                        
+                        <!-- Loading Spinner -->
+                        <div id="slots-spinner" class="spinner-container">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+
+                        <!-- Empty State -->
+                        <div id="no-slots" class="text-center py-5 d-none">
+                            <i class="bi bi-calendar-minus text-muted display-4 mb-3"></i>
+                            <p class="text-muted">You have not registered any availability slots yet.</p>
+                        </div>
+
+                        <!-- Table -->
+                        <div class="table-responsive d-none" id="slots-table-wrapper">
+                            <table class="table table-custom mb-0 text-nowrap">
+                                <thead>
+                                    <tr>
+                                        <th>Slot ID</th>
+                                        <th>Date</th>
+                                        <th>Start Time</th>
+                                        <th>End Time</th>
+                                        <th class="text-center">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="slots-tbody">
+                                    <!-- Populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Core JS APIs -->
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <!-- Page JS -->
+    <script src="js/schedule.js"></script>
+</body>
+</html>

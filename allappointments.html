@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CareLink Admin - All Appointments</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <div class="wrapper">
+        <!-- Sidebar container -->
+        <div id="sidebar-container"></div>
+
+        <!-- Content Area -->
+        <div id="content">
+            <!-- Navbar container -->
+            <div id="navbar-container"></div>
+
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="fw-bold text-dark mb-1">All Appointments</h2>
+                    <p class="text-muted mb-0">Complete healthcare logs of clinic bookings, consultations and scheduling statuses.</p>
+                </div>
+            </div>
+
+            <div id="alert-container"></div>
+
+            <!-- Filter Panel -->
+            <div class="card card-custom p-4 mb-4">
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                            <input type="text" class="form-control border-start-0" id="admin-search-input" placeholder="Search by patient name, doctor email, or reason...">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <select class="form-select" id="admin-status-filter">
+                            <option value="">All Statuses</option>
+                            <option value="PENDING">PENDING</option>
+                            <option value="CONFIRMED">CONFIRMED</option>
+                            <option value="IN_PROGRESS">IN_PROGRESS</option>
+                            <option value="COMPLETED">COMPLETED</option>
+                            <option value="CANCELLED">CANCELLED</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div id="appointments-spinner" class="spinner-container">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading appointments...</span>
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div id="no-appointments" class="text-center py-5 d-none card card-custom p-5">
+                <i class="bi bi-calendar2-minus text-muted display-4 mb-3"></i>
+                <h5 class="fw-bold text-dark">No Appointments Found</h5>
+                <p class="text-muted mb-0">No appointment records are currently available matching criteria.</p>
+            </div>
+
+            <!-- Appointments Table -->
+            <div class="card card-custom table-card shadow-sm d-none" id="table-card">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-calendar-event me-2 text-primary"></i>Clinic Bookings Master Log</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-custom mb-0 text-nowrap">
+                        <thead>
+                            <tr>
+                                <th>Appt ID</th>
+                                <th>Patient Name</th>
+                                <th>Doctor Assigned</th>
+                                <th>Scheduled Time</th>
+                                <th>Status</th>
+                                <th class="text-center">Action Checklist</th>
+                            </tr>
+                        </thead>
+                        <tbody id="appointments-tbody">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Core JS APIs -->
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            protectPage(['CLINIC_ADMIN']);
+            
+            const spinner = document.getElementById('appointments-spinner');
+            const noAppointments = document.getElementById('no-appointments');
+            const tableCard = document.getElementById('table-card');
+            const tbody = document.getElementById('appointments-tbody');
+            const alertContainer = document.getElementById('alert-container');
+            const searchInput = document.getElementById('admin-search-input');
+            const statusFilter = document.getElementById('admin-status-filter');
+            
+            let allAppointments = [];
+            
+            await loadAllAppointments();
+            
+            async function loadAllAppointments() {
+                spinner.classList.remove('d-none');
+                tableCard.classList.add('d-none');
+                noAppointments.classList.add('d-none');
+                tbody.innerHTML = '';
+                
+                try {
+                    allAppointments = await apiFetch('/api/appointments');
+                    spinner.classList.add('d-none');
+                    
+                    if (allAppointments.length === 0) {
+                        noAppointments.classList.remove('d-none');
+                        return;
+                    }
+                    
+                    tableCard.classList.remove('d-none');
+                    renderTable(allAppointments);
+                    
+                    searchInput.addEventListener('input', filterAppointments);
+                    statusFilter.addEventListener('change', filterAppointments);
+                } catch (e) {
+                    console.error(e);
+                    spinner.classList.add('d-none');
+                    showGlobalAlert('danger', 'Failed to retrieve appointments log from the server.');
+                }
+            }
+            
+            function renderTable(apptList) {
+                tbody.innerHTML = '';
+                
+                if (apptList.length === 0) {
+                    noAppointments.classList.remove('d-none');
+                    tableCard.classList.add('d-none');
+                    return;
+                }
+                
+                noAppointments.classList.add('d-none');
+                tableCard.classList.remove('d-none');
+                
+                // Show latest first
+                apptList.slice().reverse().forEach(app => {
+                    const tr = document.createElement('tr');
+                    const patientName = app.patient ? app.patient.fullName : 'N/A';
+                    const docEmail = app.doctor.account ? app.doctor.account.email : 'Doctor';
+                    const docName = docEmail.split('@')[0];
+                    const formattedDocName = `Dr. ${docName.charAt(0).toUpperCase() + docName.slice(1)}`;
+                    
+                    const dateStr = formatDateTime(app.slot.startTime);
+                    const endStr = formatDateTime(app.slot.endTime).split(', ')[1] || '';
+                    const timeHtml = `
+                        <div class="fw-semibold">${dateStr.split(', ')[0]}</div>
+                        <div class="text-xs text-muted">${dateStr.split(', ')[1]} - ${endStr}</div>
+                    `;
+                    
+                    const statusClass = getStatusClass(app.status);
+                    const statusBadge = `<span class="badge badge-status bg-${statusClass}-light text-${statusClass}">${app.status}</span>`;
+                    
+                    let actionsHtml = '';
+                    if (app.status === 'COMPLETED') {
+                        actionsHtml = `
+                            <button class="btn btn-outline-primary btn-sm rounded-pill px-3" onclick="viewPrescriptionRecord(${app.id}, '${escapeHtml(app.diagnosis || '')}', '${escapeHtml(app.medications || '')}')">
+                                <i class="bi bi-file-earmark-medical me-1"></i> View Diagnosis
+                            </button>
+                        `;
+                    } else {
+                        actionsHtml = `<span class="text-muted text-xs">No records</span>`;
+                    }
+                    
+                    tr.innerHTML = `
+                        <td class="fw-bold">#${app.id}</td>
+                        <td>
+                            <div class="fw-semibold text-dark">${patientName}</div>
+                            <div class="text-xs text-muted">ID: #${app.patient ? app.patient.id : 'N/A'}</div>
+                        </td>
+                        <td>
+                            <div class="fw-semibold text-dark">${formattedDocName}</div>
+                            <div class="text-xs text-muted">${app.doctor.specialization || 'General'}</div>
+                        </td>
+                        <td>${timeHtml}</td>
+                        <td>${statusBadge}</td>
+                        <td class="text-center">${actionsHtml}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+            
+            function filterAppointments() {
+                const query = searchInput.value.toLowerCase().trim();
+                const status = statusFilter.value;
+                
+                const filtered = allAppointments.filter(app => {
+                    const patientName = (app.patient ? app.patient.fullName : '').toLowerCase();
+                    const docEmail = (app.doctor.account ? app.doctor.account.email : '').toLowerCase();
+                    const reason = (app.reasonForVisit || '').toLowerCase();
+                    const diagnosis = (app.diagnosis || '').toLowerCase();
+                    
+                    const matchesQuery = patientName.includes(query) || 
+                                         docEmail.includes(query) || 
+                                         reason.includes(query) ||
+                                         diagnosis.includes(query);
+                                         
+                    const matchesStatus = !status || app.status === status;
+                    
+                    return matchesQuery && matchesStatus;
+                });
+                
+                renderTable(filtered);
+            }
+            
+            window.viewPrescriptionRecord = (id, diagnosis, medications) => {
+                let modalEl = document.getElementById('adminRecordModal');
+                if (modalEl) modalEl.remove();
+                
+                modalEl = document.createElement('div');
+                modalEl.className = 'modal fade';
+                modalEl.id = 'adminRecordModal';
+                modalEl.tabIndex = -1;
+                modalEl.innerHTML = `
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content border-0 shadow-lg" style="border-radius: 15px;">
+                            <div class="modal-header bg-primary text-white" style="border-top-left-radius: 15px; border-top-right-radius: 15px;">
+                                <h5 class="modal-title fw-bold"><i class="bi bi-file-earmark-medical me-2"></i>Prescription Record #${id}</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body p-4">
+                                <div class="mb-4">
+                                    <h6 class="fw-bold text-dark"><i class="bi bi-clipboard-pulse text-primary me-2"></i>Diagnosis Findings</h6>
+                                    <p class="bg-light p-3 rounded-3 text-secondary text-sm border-start border-primary border-3" style="white-space: pre-wrap;">${diagnosis || 'No diagnosis logged.'}</p>
+                                </div>
+                                <div>
+                                    <h6 class="fw-bold text-dark"><i class="bi bi-capsule text-success me-2"></i>Medications List</h6>
+                                    <p class="bg-light p-3 rounded-3 text-secondary text-sm border-start border-success border-3" style="white-space: pre-wrap;">${medications || 'No medications prescribed.'}</p>
+                                </div>
+                            </div>
+                            <div class="modal-footer bg-light border-0" style="border-bottom-left-radius: 15px; border-bottom-right-radius: 15px;">
+                                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modalEl);
+                
+                const modal = new bootstrap.Modal(modalEl);
+                modal.show();
+            };
+            
+            function getStatusClass(status) {
+                switch (status) {
+                    case 'PENDING': return 'warning';
+                    case 'CONFIRMED': return 'primary';
+                    case 'IN_PROGRESS': return 'info';
+                    case 'COMPLETED': return 'success';
+                    case 'CANCELLED': return 'danger';
+                    default: return 'secondary';
+                }
+            }
+            
+            function showGlobalAlert(type, message) {
+                alertContainer.innerHTML = `
+                    <div class="alert alert-${type} alert-custom alert-dismissible fade show d-flex align-items-center mb-4" role="alert">
+                        <i class="bi bi-${type === 'success' ? 'check-circle-fill' : 'exclamation-triangle-fill'} me-2 fs-5"></i>
+                        <div>${message}</div>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                `;
+            }
+            
+            function escapeHtml(text) {
+                if (!text) return '';
+                return text
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
+            }
+        });
+    </script>
+</body>
+</html>
